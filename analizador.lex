@@ -11,6 +11,33 @@ Velázquez Villegas Fabricio
 // Definiciones
 %{
 #include <stdio.h>
+
+typedef struct {
+    int posicion;
+    char nombre[100];
+    int tipo; 
+} Simbolo;
+
+typedef struct {
+    int posicion;
+    char dato[255];
+} Literal;      //cadenas
+
+typedef struct {
+    int clase;
+    int valor;
+} Token;
+
+Simbolo tabla_simbolos[200];
+int num_simbolos = 0;
+
+Literal tabla_literales[200];
+int num_literales = 0;
+
+Token tokens[1000];
+int num_tokens = 0;
+
+
 %}
 
 // ---------------------------------------------------- Reglas
@@ -94,19 +121,50 @@ int yywrap(){}
 
 // Tabla de símbolos -------------
 
-int main(){
 
-    //entrada por archivo
-    FILE *fp;
-    char filename[50];
-    printf("Enter the filename: \n");
-    scanf("%s",filename);
-    fp = fopen(filename,"r");
-    yyin = fp;
+int main(int argc, char **argv) {
+    
+    if(argc > 1) {
+        yyin = fopen(argv[1], "r");
+        if(!yyin) {
+            printf("Error al abrir el archivo %s\n", argv[1]);
+            return 1;
+        }
+        printf("Analizando el archivo: %s\n\n", argv[1]);
+    } else {
+        printf("Error: Falta el archivo de entrada.\n");
+        return 1;
+    }
 
     yylex();
-    
-return 0;
+    fclose(yyin);// cierra archivo
+
+    int i=0;    
+    printf("\n-------------- TABLA DE SÍMBOLOS --------------\n");
+    printf("Posicion\t  Tipo    \tNombre    \n");
+    for( i = 0; i < num_simbolos; i++) {
+        printf("%d\t\t%d\t%s\n", tabla_simbolos[i].posicion, tabla_simbolos[i].tipo, tabla_simbolos[i].nombre);
+    }
+
+    printf("\n");
+    printf("\n-------------- TABLA DE LITERALES --------------\n");
+    printf("Posicion\tCadena\n");
+    for( i = 0; i < num_literales; i++) {
+        printf("%d\t\t%s\n", tabla_literales[i].posicion, tabla_literales[i].dato);
+    }
+
+    printf("\n");
+    printf("\n-------------- TOKENS GENERADOS --------------\n");
+    printf("Clase\t\tValor\n");
+    for( i = 0; i < num_tokens; i++) {
+        if(tokens[i].clase == 0 || tokens[i].clase == 6) {
+            printf("%d\t\t%d ('%c')\n", tokens[i].clase, tokens[i].valor, (char)tokens[i].valor);
+        } else {
+            printf("%d\t\t%d\n", tokens[i].clase, tokens[i].valor);
+        }
+    }
+
+    return 0;
 }
 
 
