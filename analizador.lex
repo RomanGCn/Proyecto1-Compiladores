@@ -9,19 +9,59 @@ Velázquez Villegas Fabricio
 %{
 #include <stdio.h>
 #include <stdlib.h> 
-/*Se agrega para funciones de gestión de memoria (malloc para darle memoria a los nodos, 
+/*Se agrega para funciones de gestión de memoria (malloc y realloc para memoria dinamica, 
 atoi que convierte cadenas a entero y exit por si se necesita abortar).*/
 #include <string.h> 
-/*Se agrega para manipulación de cadenas (strcmp para comparar dos cadenas siendo base para el árbol,
+/*Se agrega para manipulación de cadenas (strcmp para comparar dos cadenas,
 strcpy que copia cadenas a nodos y strlen para longitud).*/
 
-typedef struct {
-    int clase;
-    int valor;
-} Token;
+/* -------------------------------------------------------------------------- */
+/* Lista de tokens	- Roman */
+/* -------------------------------------------------------------------------- */
+int (*lTokens)[2];  //puntero a un array de 2 ints, cada columna es un token
+int numTokens = 0;     //tamaño de la lista de tokens
+/*
+	Ejemplo
+	ltokens = { {1,2}, {3,2} };
+    en tabla:
+            | t1    | t2    | ...
+    -----------------------------------
+    clase   | 1     | 3     | ...
+    ----------------------------------
+    valor   | 2     | 2     | ...
+*/
+// ------------------------------------------------------------ Catalogos
+// Palabras reservadas
+static const char *cat_PalRes[] = {"assinado", "caso", "enquanto", "fazer", "flutuador",
+    "inteiro", "para", "quebrar", "retorno", "se", "trocar"};
+static const int size_cat_PalRes = 11;
+// Operadores logicos
+static const char *cat_OpLog[] = {"&&", "||", "!"};
+static const int size_cat_OpLog = 3;
+// Operadores relacionales
+static const char *cat_OpRel[] = {"==", "!=", ">", "<", ">=", "<="};
+static const int size_cat_OpRel = 6;
+// Operadores de asignacion
+static const char *cat_OpAsig[] = {"=", "+=", "-=", "*=", "/=", "%="};
+static const int size_cat_OpAsig = 6;
+// Operadores sobre cadenas
+static const char *cat_OpCad[] = {"&", "like"};
+static const int size_cat_OpCad = 2;
+// Simbolos especiales
+static const char cat_Simbolos[] = {
+    '#', '%', '(', ')', '*', '+', ',', '-', '/', ':', ';', '[', ']', '{', '}'};
+static const int size_cat_SimASCII = 15;
+// Equivalente en ASCII
+static const int cat_ASCII[] = {
+    35, 37, 40, 41, 42, 43, 44, 45, 47, 58, 59, 91, 93, 123, 125};
 
-Token tokens[1000];
-int   num_tokens = 0;
+// ----------------------------------------------- Prototipos de Funciones Tokens
+// Inserta en la lista de tokens un token con su clase y valor
+void insertToken(int (**lTokens)[2], int *numTokens, int class, int val_pos, char *simbolo);
+
+// Usado en la insercion, devuelve el valor del token 
+int tokenizeValue(int classs, int_ val_pos, char *str);
+
 
 /* -------------------------------------------------------------------------- */
 /* Arbol de búsqueda binaria, tabla de simbolos y literales */
@@ -49,7 +89,271 @@ typedef struct NodoLit{
 NodoLit *raizLit = NULL;
 int numLit = 0;
 /* Es igual a la estructura del BSF para la tabla de simbolos */
+
 /* -------------------------------------------------------------------------- */
+/* Prototipos de funciones */
+/* -------------------------------------------------------------------------- */
+/* Para la tabla de simbolos */
+NodoSimb* buscarSimb(NodoSimb *raiz, char *nombre);
+NodoSimb* insertarSimb(NodoSimb *raiz, char *nombre, int *pos);
+void inOrdenSimb (NodoSimb *raiz, FILE *f);
+
+/* -------------------------------------------------------------------------- */
+/* Para la tabla de literales */
+NodoLit* insertarLit(NodoLit *raiz, char *cadena, int *pos);
+void inOrdenLit(NodoLit *raiz, FILE *f);
+
+%}
+/* -------------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------------------------------------- */
+/* --------------                           Analizador                         ------------------ */
+/* ----------------------------------------------------------------------------------------------- */
+
+/* -----------------------------------------------------------------   Reglas */
+op_aritmeticos "+"|"-"|"*"|"/"|"%"
+
+op_logico "&&"|"||"|"!"
+
+op_rel ((">"|"<"|"!"|"=")"=")|(">"|"<")
+
+cte_ent 0|[1-9][0-9]*|"("("+"|"-")[1-9][0-9]*")"
+
+palRes assinado|caso|enquanto|fazer|flutuador|inteiro|para|quebrar|retorno|se|trocar
+
+identificador "_"([a-z]|[A-Z])([a-z]|[A-Z]|[0-9])*"_"
+
+simbolos \(|\)|\{|\}|\;|\,|\[|\]|\:|#
+
+op_asignacion "="|("+"|"-"|"*"|"/"|"%")"="
+
+cte_cadena \"[^\"]*\"
+
+op_cadena "&"|like
+
+/* ---------------------------------------------------- Operaciones sobre reglas */
+%%
+{op_aritmeticos}    { /* 0. Operadores aritmeticos -------------------------- */
+    int class = 0; //clase del token
+    insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
+}
+{op_logico} {          /* 1. Operadores logicos ----------------------------- */
+    int class = 1; //clase del token
+    insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de token
+}
+{op_rel}    {          /* 2. Operadores relacionales ------------------------- */
+    int class = 2; //clase del token
+    insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de token
+}
+{cte_ent} {              /* 3. Constantes enteras ---------------------------- */
+    int class = 3; //clase del token
+
+	// !!!!!! FALTA AQUI INSERTAR A LA TABLA DE LITERALES
+    insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
+}
+{palRes}    {         /* 4. Palabras reservadas ---------------------------- */
+    int class = 4; //clase del token
+    insertToken(&lTokens, &numTokens, class, yytext); //inserta el token en la lista de tokens
+}
+{identificador} {      /* 5. Identificadores -------------------------------- */
+    int class = 5; //clase del token
+	NodoSimb *n = buscarSimb(raizSimb, yytext);
+    int pos;
+
+    if(n == NULL){
+        raizSimb = insertarSimb(raizSimb, yytext, &numSimb);
+        pos = numSimb - 1;
+    } else {
+        pos = n->pos;
+    }
+
+	insertToken(&lTokens, &numTokens, class, pos, yytext); //inserta el token en la lista de tokens
+}
+{simbolos}  {            /* 6. Simbolos epeciales --------------------------- */
+    int class = 6; //clase del token
+    insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
+}
+{op_asignacion} {        /* 7. Operadores de asignacion ------------------- */
+    int class = 7; //clase del token
+    insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
+}
+{cte_cadena}    {       /* 8. Constantes cadenas ---------------------------*/
+	int class = 8; //clase del token
+    raizLit = insertarLit(raizLit, yytext, &numLit);
+    int pos = numLit - 1;
+
+	insertToken(&lTokens, &numTokens, class, pos, yytext); //inserta el token en la lista de tokens  
+}
+{op_cadena}     {       /* 9. Operadores sobre cadena -------------------  */
+    int class = 9; //clase del token
+    insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
+}
+[ \t\n]+          /* Come espacios */
+.       {
+    printf("Caracter no reconocido: '%s'\n", yytext);
+}
+%%
+
+int yywrap(){} //ENVUELVE EN ANALIZADOR PARA SER USADO
+
+/* ----------------------------------------------------------------------------------------------- */
+/* --------------                            Codigo                            ------------------ */
+/* ----------------------------------------------------------------------------------------------- */
+
+int main(int argc, char **argv) {
+    int i;    
+    if(argc > 1) {
+        yyin = fopen(argv[1], "r");
+        if(!yyin) {
+            printf("Error al abrir el archivo %s\n", argv[1]);
+            return 1;
+        }
+        printf("Analizando el archivo: %s\n\n", argv[1]);
+    } else {
+        printf("Error: Falta el archivo de entrada.\n");
+        return 1;
+    }
+
+	//Inicializa la lista de tokens - aloca tamaño de 1
+    lTokens = malloc (sizeof(double[1][2]));
+
+    if(!lTokens){
+        //si no se aloco memoria correctamente
+        return -1; //NOTA!!!!!! aqui debe lanzar un error
+    }
+
+    yylex();	// corre el analizador
+
+    fclose(yyin);// cierra archivo
+
+
+
+    /* ---------- Tabla de simbolos ---------- */
+    printf("\n-------------- TABLA DE SIMBOLOS --------------\n");
+    printf("Pos\tNombre\tTipo\n");
+    inOrdenSimb(raizSimb, stdout);
+
+    /* ---------- Tabla de literales ---------- */
+    printf("\n-------------- TABLA DE LITERALES --------------\n");
+    printf("Pos\tCadena\n");
+    inOrdenLit(raizLit, stdout);
+    printf("\n");
+
+
+    printf("\n-------------- TOKENS GENERADOS --------------\n");
+    printf("Clase\t | \tValor\n");
+	for (i=0; i<num_tokens; i++) {
+		printf("%d\t | \t%d\n",lTokens[i][0],lTokens[i][1]);
+	}
+
+	free(lTokens);
+    return 0;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Funciones Tokens */
+/* -------------------------------------------------------------------------- */
+
+void insertToken(int (**lTokens)[2], int *numTokens, int class, int val_pos, char *simbolo){
+    int newlenght = *numTokens + 1; //añade 1
+    int (*tmp)[2] = realloc(*lTokens, sizeof(double[newlenght][2])); //lista temporal para re-alocar memoria
+
+    if (tmp){   //si re-aloco correctamente 
+        //poniendo en la ultima
+        tmp[*numTokens][0]= class;
+        tmp[*numTokens][1]= tokenizeValue(class,val_pos,simbolo);
+
+        *lTokens = tmp; //actualiza la lista de tokens
+        *numTokens = newlenght; //actualiza el tamaño de la lista de tokens
+    }
+    return;
+}
+
+int tokenizeValue(int class, int val_pos, char *str){
+    /*
+    Notas:
+        Esta funcion devuelve el valor del token
+
+        Para las clases 1,2,3,7 y 9 se busca el valor del token en su catalogo correspondiente
+        usando el indice de este. Para ello se usa strcmp.
+        Notese que strcmp devuelve 0 si las cadenas son iguales
+
+        Para las clases 0 y 6, se asigna a su equivalente en ASCII
+        Si no encuentra la clase dentro de las opciones, 
+        se asume que es parte de la clase 0 o 6
+
+        Para las clases 3,5 y 8 se obtiene el valor a partir de la tabla
+        de literales o de simbolos, indicado como 'valor_pos'
+
+    - Roman
+    */
+    int valor = -1;
+    int n;
+
+    switch(class) {
+        case 1:             // Operadores logicos
+            for(n=0; n<(size_cat_OpLog); n++){
+                if (!(strcmp(str,cat_OpLog[n]))){ 
+                    valor = n;
+                    break;
+                }
+            }
+            break;
+        case 2:             // Operadores relacionales
+            for(n=0; n<(size_cat_OpRel); n++){
+                if (!(strcmp(str,cat_OpRel[n]))){
+                    valor = n;
+                    break;
+                }
+            }
+            break;
+        case 3:             // Constantes enteras
+            valor = val_pos;
+            break;
+        case 4:            // Palabras reservadas
+            for(n=0; n<(size_cat_PalRes); n++){
+                if (!(strcmp(str,cat_PalRes[n]))){
+                    valor = n;
+                    break;
+                }
+            }
+            break;
+        case 5:             // Identificadores
+            valor = val_pos;
+            break;
+
+        case 7:             // Operadores de asignacion
+            for(n=0; n<(size_cat_OpAsig); n++){
+                if (!(strcmp(str,cat_OpAsig[n]))){
+                    valor = n;
+                    break;
+                }
+            }
+            break;
+        case 8:             // Constantes cadenas
+            valor = val_pos;
+            break;
+        case 9:             // Operadores sobre cadenas
+            for(n=0; n<(size_cat_OpCad); n++){
+                if (!(strcmp(str,cat_OpCad[n]))){
+                    valor = n;
+                    break;
+                }
+            }
+            break;
+        default:
+            // Asumiendo que sea un operador aritmetico o simbolo especial
+            for(n=0; n<(size_cat_SimASCII); n++){
+                if (str[0] == cat_Simbolos[n]){
+                    valor = cat_ASCII[n];
+                    break;
+                }
+            }
+    }
+    return valor;
+}
+
 
 /* -------------------------------------------------------------------------- */
 /* Funciones del árbol de busqueda para símbolos */
@@ -173,127 +477,4 @@ void inOrdenLit(NodoLit *raiz, FILE *f){
 	fprintf(f, "%d\t%s\n", raiz->pos, raiz->cadena);
 	/*Subárbol derecho*/
 	inOrdenLit(raiz->der, f);
-}
-%}
-/* -------------------------------------------------------------------------- */
-
-
-
-// ---------------------------------------------------- Reglas
-op_aritmeticos "+"|"-"|"*"|"/"|"%"
-
-op_logico "&&"|"||"|"!"
-
-op_rel ((">"|"<"|"!"|"=")"=")|(">"|"<")
-
-cte_ent 0|[1-9][0-9]*|"("("+"|"-")[1-9][0-9]*")"
-
-palRes assinado|caso|enquanto|fazer|flutuador|inteiro|para|quebrar|retorno|se|trocar
-
-identificador "_"([a-z]|[A-Z])([a-z]|[A-Z]|[0-9])*"_"
-
-simbolos \(|\)|\{|\}|\;|\,|\[|\]|\:|#
-
-op_asignacion "="|("+"|"-"|"*"|"/"|"%")"="
-
-cte_cadena \"[^\"]*\"
-
-op_cadena "&"|like
-
-// -------------------------------------------------------------------- Codigo sobre las reglas
-
-%%
-{op_aritmeticos}    { /* 0. Operadores aritmeticos -------------------------- */
-    
-}
-{op_logico} {          /* 1. Operadores logicos ----------------------------- */
-    
-}
-{op_rel}    {          /* 2. Operadores relacionales ------------------------- */
-    
-}
-{cte_ent} {              /* 3. Constantes enteras ---------------------------- */
-    
-}
-{palRes}    {         /* 4. Palabras reservadas ---------------------------- */
-    
-}
-{identificador} {      /* 5. Identificadores -------------------------------- */
-    NodoSimb *n = buscarSimb(raizSimb, yytext);
-    int pos;
-    if(n == NULL){
-        raizSimb = insertarSimb(raizSimb, yytext, &numSimb);
-        pos = numSimb - 1;
-    } else {
-        pos = n->pos;
-    }
-    tokens[num_tokens].clase = 5;
-    tokens[num_tokens].valor = pos;
-    num_tokens++;
-    printf("Token (5, %d)  <- %s\n", pos, yytext);
-}
-{simbolos}  {            /* 6. Simbolos epeciales --------------------------- */
-    
-}
-{op_asignacion} {        /* 7. Operadores de asignacion ------------------- */
-    
-}
-{cte_cadena}    {       /* 8. Constantes cadenas ---------------------------*/
-
-    raizLit = insertarLit(raizLit, yytext, &numLit);
-    int pos = numLit - 1;
-    tokens[num_tokens].clase = 8;
-    tokens[num_tokens].valor = pos;
-    num_tokens++;
-    printf("Token (8, %d)  <- %s\n", pos, yytext);
-  
-}
-{op_cadena}     {       /* 9. Operadores sobre cadena -------------------  */
-    
-}
-[ \t\n]+          /* Come espacios */
-.       {
-    printf("Caracter no reconocido: '%s'\n", yytext);
-}
-%%
-
-// ------------------------------------------------------------------------------------------- Código
-// Definicion de estructuras
-// Tokens ---------
-// Catálogos
-// Tabla de símbolos -------------
-int main(int argc, char **argv) {
-    int i;    
-    if(argc > 1) {
-        yyin = fopen(argv[1], "r");
-        if(!yyin) {
-            printf("Error al abrir el archivo %s\n", argv[1]);
-            return 1;
-        }
-        printf("Analizando el archivo: %s\n\n", argv[1]);
-    } else {
-        printf("Error: Falta el archivo de entrada.\n");
-        return 1;
-    }
-    yylex();
-    fclose(yyin);// cierra archivo
-    /* ---------- Tabla de simbolos ---------- */
-    printf("\n-------------- TABLA DE SIMBOLOS --------------\n");
-    printf("Pos\tNombre\tTipo\n");
-    inOrdenSimb(raizSimb, stdout);
-    /* ---------- Tabla de literales ---------- */
-    printf("\n-------------- TABLA DE LITERALES --------------\n");
-    printf("Pos\tCadena\n");
-    inOrdenLit(raizLit, stdout);
-    printf("\n");
-    printf("\n-------------- TOKENS GENERADOS --------------\n");
-    printf("Clase\t\tValor\n");
-    for( i = 0; i < num_tokens; i++) {
-        if(tokens[i].clase == 0 || tokens[i].clase == 6) {
-            printf("%d\t\t%d ('%c')\n", tokens[i].clase, tokens[i].valor, (char)tokens[i].valor);
-        } else {
-            printf("%d\t\t%d\n", tokens[i].clase, tokens[i].valor);
-        }
-    }
-    return 0;
 }
