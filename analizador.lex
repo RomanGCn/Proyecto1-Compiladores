@@ -11,6 +11,12 @@ Velázquez Villegas Fabricio
 // Definiciones
 %{
 #include <stdio.h>
+#include <stdlib.h> 
+/*Se agrega para funciones de gestión de memoria (malloc para darle memoria a los nodos, 
+atoi que convierte cadenas a entero y exit por si se necesita abortar).*/
+#include <string.h> 
+/*Se agrega para manipulación de cadenas (strcmp para comparar dos cadenas siendo base para el árbol,
+strcpy que copia cadenas a nodos y strlen para longitud).*/
 
 typedef struct {
     int posicion;
@@ -27,6 +33,34 @@ typedef struct {
     int clase;
     int valor;
 } Token;
+
+/* -------------------------------------------------------------------------- */
+/* Arbol de búsqueda binaria, tabla de simbolos y literales */
+/* -------------------------------------------------------------------------- */
+/* Para la tabla de simbolos */
+typedef struct NodoSimb{ 
+	int	pos; /* valor que se le asigna al token */
+	char	nombre[100]; /*cadena con el */
+	int	tipo; 
+	struct NodoSimb *izq;
+	struct NodoSimb *der;
+} NodoSimb;
+
+NodoSimb *raizSimb = NULL; /* apunta al nodo raíz del arbol y al estar vacío se iguala a NULL*/
+int numbSimb = 0; /* este es un contador de identificadores insertados. Su valor actual es la siguiente posición disponible. Este arranca en 0 */
+/* -------------------------------------------------------------------------- */
+/* Para la tabla de literales */
+typedef struct NodoLit{
+	int	pos; /* posición asignada al insertar, valor de token */
+	char cadena[200]; /* la cadena literal, completa e incluyendo comillas */
+	struct NodoLit *izq;
+	struct NodoLit *der;
+}
+
+NodoLit *raizLit = NULL;
+int numLit = 0;
+/* Es igual a la estructura del BSF para la tabla de simbolos */
+/* -------------------------------------------------------------------------- */
 
 Simbolo tabla_simbolos[200];
 int num_simbolos = 0;
