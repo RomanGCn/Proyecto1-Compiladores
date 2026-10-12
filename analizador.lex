@@ -20,6 +20,10 @@ strcpy que copia cadenas a nodos y strlen para longitud).*/
 /* -------------------------------------------------------------------------- */
 int (*lTokens)[2];  //puntero a un array de 2 ints, cada columna es un token
 int numTokens = 0;     //tamaño de la lista de tokens
+char lista_errores[100][255]; //hasta 100 errores de 255 caracteres
+int num_errores = 0;
+
+
 /*
 	Ejemplo
 	ltokens = { {1,2}, {3,2} };
@@ -212,6 +216,8 @@ op_cadena "&"|like
 [ \t\n]+          /* Come espacios */
 .       {
     printf("Caracter no reconocido: '%s'\n", yytext);
+	strcpy(lista_errores[num_errores], yytext);
+    num_errores++;
 }
 %%
 
@@ -284,6 +290,15 @@ int main(int argc, char **argv) {
             printf("%d\t\t%d\n", clase, valor);
             fprintf(archivo, "%d\t\t%d\n", clase, valor);
         }
+    }
+
+	    if (num_errores > 0) {
+        printf("\n-------------- ERRORES LÉXICOS --------------\n");
+        fprintf(archivo, "\n-------------- ERRORES LÉXICOS --------------\n");
+        for(int j = 0; j < num_errores; j++) {
+                printf("%s\n", lista_errores[j]);
+                fprintf(archivo, "%s\n", lista_errores[j]);
+            }
     }
     
     free(lTokens);
