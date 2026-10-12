@@ -202,7 +202,7 @@ int yywrap(){} //ENVUELVE EN ANALIZADOR PARA SER USADO
 
 int main(int argc, char **argv) {
     int i;    
-    if(argc > 1) {
+        if(argc > 1) {
         yyin = fopen(argv[1], "r");
         if(!yyin) {
             printf("Error al abrir el archivo %s\n", argv[1]);
@@ -214,39 +214,61 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-	//Inicializa la lista de tokens - aloca tamaño de 1
-    lTokens = malloc (sizeof(double[1][2]));
-
+    lTokens = malloc(sizeof(int[1][2]));//cambio de double a int
     if(!lTokens){
-        //si no se aloco memoria correctamente
-        return -1; //NOTA!!!!!! aqui debe lanzar un error
+        printf("Error de memoria\n");
+        return -1; 
     }
 
     yylex();	// corre el analizador
 
     fclose(yyin);// cierra archivo
 
-
+    FILE *archivo = fopen("salida.txt", "w");
+    if (archivo == NULL) {
+        printf("Error al abrir archivo para la salida\n");
+        return 1;
+    }
 
     /* ---------- Tabla de simbolos ---------- */
     printf("\n-------------- TABLA DE SIMBOLOS --------------\n");
+    fprintf(archivo, "\n-------------- TABLA DE SIMBOLOS --------------\n");
     printf("Pos\tNombre\tTipo\n");
+    fprintf(archivo, "Pos\tNombre\tTipo\n");
     inOrdenSimb(raizSimb, stdout);
+    inOrdenSimb(raizSimb, archivo);
 
-    /* ---------- Tabla de literales ---------- */
+    // Tabla de Literales
     printf("\n-------------- TABLA DE LITERALES --------------\n");
+    fprintf(archivo, "\n-------------- TABLA DE LITERALES --------------\n");
     printf("Pos\tCadena\n");
+    fprintf(archivo, "Pos\tCadena\n");
     inOrdenLit(raizLit, stdout);
+    inOrdenLit(raizLit, archivo);
     printf("\n");
 
-
+    // 7. Tokens 
     printf("\n-------------- TOKENS GENERADOS --------------\n");
-    printf("Clase\t | \tValor\n");
-	for (i=0; i<num_tokens; i++) {
-		printf("%d\t | \t%d\n",lTokens[i][0],lTokens[i][1]);
-	}
-
-	free(lTokens);
+    fprintf(archivo, "\n-------------- TOKENS GENERADOS --------------\n");
+    printf("Clase\t  \tValor\n");
+    fprintf(archivo, "Clase\t  \tValor\n");
+    
+    for(i = 0; i < numTokens; i++) {
+        int clase = lTokens[i][0];
+        int valor = lTokens[i][1];
+        
+        if(clase == 0 || clase == 6) {
+            printf("%d\t\t%d ('%c')\n", clase, valor, (char)valor);
+            fprintf(archivo, "%d\t\t%d ('%c')\n", clase, valor, (char)valor);
+        } else {
+            printf("%d\t\t%d\n", clase, valor);
+            fprintf(archivo, "%d\t\t%d\n", clase, valor);
+        }
+    }
+    
+    free(lTokens);
+    fclose(archivo);
+    
     return 0;
 }
 
@@ -479,59 +501,4 @@ void inOrdenLit(NodoLit *raiz, FILE *f){
 	inOrdenLit(raiz->der, f);
 }
 
-int main(int argc, char **argv) {
-    int i;    
-    if(argc > 1) {
-        yyin = fopen(argv[1], "r");
-        if(!yyin) {
-            printf("Error al abrir el archivo %s\n", argv[1]);
-            return 1;
-        }
-        printf("Analizando el archivo: %s\n\n", argv[1]);
-    } else {
-        printf("Error: Falta el archivo de entrada.\n");
-        return 1;
-    }
-    yylex();
-    fclose(yyin);// cierra archivo
 
-    FILE *archivo = fopen("salida.txt", "w");
-    if (archivo==NULL){
-            printf("error al abrir archivo para la salida");
-            return 1;
-        }
-
-    /* ---------- Tabla de simbolos ---------- */
-    printf("\n-------------- TABLA DE SIMBOLOS --------------\n");
-    fprintf(archivo, "\n-------------- TABLA DE SIMBOLOS --------------\n");
-
-    printf("Pos\tNombre\tTipo\n");
-    fprintf(archivo, "Pos\tNombre\tTipo\n");
-    inOrdenSimb(raizSimb, stdout);
-    inOrdenSimb(raizSimb, archivo);
-
-    printf("\n-------------- TABLA DE LITERALES --------------\n");
-    fprintf(archivo, "\n-------------- TABLA DE LITERALES --------------\n");
-    printf("Pos\tCadena\n");
-    fprintf(archivo, "Pos\tCadena\n");
-    inOrdenLit(raizLit, stdout);
-    inOrdenLit(raizLit, archivo);
-    printf("\n");
-
-    printf("\n-------------- TOKENS GENERADOS --------------\n");
-    fprintf(archivo, "\n-------------- TOKENS GENERADOS --------------\n");
-    printf("Clase\t\tValor\n");
-    fprintf(archivo, "Clase\t\tValor\n");
-    
-    for( i = 0; i < num_tokens; i++) {
-        if(tokens[i].clase == 0 || tokens[i].clase == 6) {
-            printf("%d\t\t%d ('%c')\n", tokens[i].clase, tokens[i].valor, (char)tokens[i].valor);
-            fprintf(archivo, "%d\t\t%d ('%c')\n", tokens[i].clase, tokens[i].valor, (char)tokens[i].valor);
-        } else {
-            printf("%d\t\t%d\n", tokens[i].clase, tokens[i].valor);
-            fprintf(archivo, "%d\t\t%d\n", tokens[i].clase, tokens[i].valor);
-        }
-    }
-    fclose(archivo);
-    return 0;
-}
