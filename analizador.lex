@@ -147,9 +147,30 @@ op_cadena "&"|like
 }
 {cte_ent} {              /* 3. Constantes enteras ---------------------------- */
     int class = 3; //clase del token
+    int val_pos; //valor del token
+    char *str; //cadena del token
+    int i; //para recorrer la cadena
+    
+    if (yytext[0] == '(') { //si tiene signos
+        if (yytext[1] == '+'){ //si tiene signo positivo
+            //recorre la cadena sin los primeros 2 y ultimo caracter, quitando los parentesis
+            for(i=0; i<(strlen(yytext)-3); i++){ 
+                str[i] = yytext[i+2];
+            }
+        } else {
+            //recorre la cadena sin el primer y ultimo caracter, quitando los parentesis
+            for(i=0; i<(strlen(yytext)-2); i++){ 
+                str[i] = yytext[i+1];
+            }
+        }
+        val_pos = atoi(str);    // convierte la cadena limpia a entero
 
-	// !!!!!! FALTA AQUI INSERTAR A LA TABLA DE LITERALES
-    insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
+    } else { //si no tiene signos
+        val_pos = atoi(yytext); // convierte la cadena dada a entero
+    }
+
+    insertToken(&lTokens, &lenght, class, val_pos, yytext); //inserta el token en la lista de tokens
+
 }
 {palRes}    {         /* 4. Palabras reservadas ---------------------------- */
     int class = 4; //clase del token
@@ -247,7 +268,6 @@ int main(int argc, char **argv) {
     inOrdenLit(raizLit, archivo);
     printf("\n");
 
-    // 7. Tokens 
     printf("\n-------------- TOKENS GENERADOS --------------\n");
     fprintf(archivo, "\n-------------- TOKENS GENERADOS --------------\n");
     printf("Clase\t  \tValor\n");
