@@ -3,20 +3,19 @@
 
 #include <stdio.h>
 
-typedef struct {
-    char simbolo;
-    int linea;
-    int columna;
-} Atomo;
+struct Atomo {
+    char atomo;
+    int num_linea;
+    int num_col;
+    struct Atomo *next;
+};
 
-extern Atomo *listaAtomos;
-extern int numAtomos;
-
-/* Atomo actual */
+/* Átomo actual y puntero global */
+extern struct Atomo *atomoActual;
 extern char c;
 
-/* Funciones auxiliares */
-void iniciarAnalisisSintactico(FILE *archivoSalida);
+/* Funciones base del parser */
+void iniciarAnalisisSintactico(struct Atomo *inicioLista, FILE *archivoSalida);
 void avanzar(void);
 void consumir(char esperado);
 void errorSintactico(const char *esperado);
