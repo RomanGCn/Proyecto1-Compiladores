@@ -1,0 +1,4 @@
+_num1_ = 34 * _val_ + ((-12) + _val_) / [calcula_(63)];
+_num2_ = (-285);
+_val_ = [suma_(_num1_, _num2_)];
+_cad1_ = "hola";
