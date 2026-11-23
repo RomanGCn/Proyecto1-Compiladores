@@ -483,3 +483,244 @@ void casos(void) {
         errorSintactico("'c' (caso), '(' (default) o '#'");
     }
 }
+
+
+
+
+
+/* -------------------------------------------------------------------------- */
+/* Regla 23: <Asig> -> a <opArit> E ; */
+void Asig(){
+	/* El átomo "a" representa un identificador */
+		if (c == 'a'){
+			consumir('a'); /* Se "consume" el identificador */
+			opArit(); /* Reglas de la 24 a 29: operadores de asignación */
+			E(); /* Regla 30: expresión aritmética */
+            consumir(';');  /* La asignación debe terminar con punto y coma entonces: */
+
+		} else {
+			/* Aqui se recopilan los errores sintacticos */
+			errorSintactico("identificador 'a' para iniciar <Asig>");
+		}
+}
+
+/* Reglas de 24 a 29: <opArit> -> | x | y | k | r | o */
+void opArit() {
+	char s = c;
+	/* Listado de atomos para hacer comparaciones */
+	if (s == '=' || s == 'x' || s == 'y' || s == 'k' || s == 'r' || s == 'o'){
+		} else {
+			errorSintactico("operador de asignación");
+		}	
+}
+
+/* Regla 30: E -> T E' */
+void E() {
+	T();
+	EP();
+}
+
+/* Regla 31: E' -> + T E' | - T E' | ε */
+void EP() {
+	char s = c;
+	if (s == '+'){
+		T();
+		EP(); /* Recursión para cadenas como "a + b + c " */
+	} else if (s == '-') {
+		T();
+		EP();
+	}
+	/* Si no es un símbolo '+' ni un símbolo '-' se aplica la de E' -> ε (no se hace nada) */
+}
+
+/* Regla 34: T -> F T' */
+void T() {
+	F();
+	TP(); /* Cola del término multiplicación, división y módulo */
+}
+
+/* Reglas de la 35 a la 38: T' -> * F T' | / F T' | % F T' | ε */
+void TP() {
+	char s = c;
+	
+	if(s == '*') {
+		F();
+		TP();
+        return;
+	} else if (s == '/') {
+		F();
+		TP();
+        return;
+	} else if(s == '%') {
+		F();
+		TP();
+        return;
+	}
+	/* Si no es una multiplicación, división o módulo se aplica epsilon */
+}
+
+/* Reglas de 39 a 42: F -> ( E ) | a | n | <llama> */
+void F() {
+	char s = c;
+    
+    if (s == '(') {
+        /* Producción F -> ( E ) */
+		E();
+        consumir(')');
+    } else if (s == 'a') {
+        consumir('a');
+    }else if (s == 'n') {
+        consumir('n');
+    } else if (s == '[') {
+		/* Producción F -> <Llama> (first de Llama o sea '[') */
+		Llama();
+	} else {
+		errorSintactico("'(', 'a', 'n' o '['");
+	}
+}
+
+/* Regla 43: R -> E <opRel> E */
+void R(){
+	E(); /* Expresion aritmética por la izquierda */
+	opRel();
+	E(); /* Expresion aritmética por la derecha */
+}
+
+/* Regla 44 a la regla 49: <opRel> -> > | < | e | d | m | w */
+void opRel(){
+	char s = c;
+	if (s == '>' || s == '<' || s == 'e' || s == 'd' || s == 'm' || s == 'w') {
+        return;
+    } else {
+        errorSintactico("un operador relacional (>, <, ==, !=, >=, <=)");
+    }
+}
+
+/* Reglas 61 y 62: <expLogica> -> ! <expRel> | R <expLog> */
+void expLogica() {
+    char s = c;
+
+    if (s == '!') {
+        /* Producción expLogica -> ! <expRel> */
+        expRel();
+    } else {
+        /* Producción expLogica -> R <expLog> */
+        R();
+        expLog();
+    }
+}
+
+/* Reglas 63 y 64: <expLog> -> <opLog> R | ε */
+void expLog() {
+    char s = c;
+    if (s == 'h' || s == 'j') {
+        opLog();
+        R();
+    }
+    /* Si no cae en ninguno de los casos no se hace nada */
+}
+
+/* Reglas 65 y 66: <expRel> -> { R } | E */
+void expRel() {
+	char s = c;
+    if (s == '{') {
+        /* Producción expRel -> { R } */
+        R();
+        consumir('}');
+
+    } else {
+        /* Producción expRel -> E */
+        E();
+    }
+}
+
+/* Reglas 67 y 68: <opLog> -> h | j */
+void opLog() {
+    char s = c;
+
+    if (s == 'h' || s == 'j') {
+        return;
+    } else {
+        errorSintactico("un operador lógico (&& o ||)");
+    }
+}
+
+/* Reglas 77 y 78: <expCad> -> a <opCad> | v <opCad> */
+void expCad(){
+	char s = c;
+	 /* 'a' = identificador, 'v' = constante cadena */
+    if (s == 'a' || s == 'v') {
+        opCad();
+    } else {
+        errorSintactico("Se esperaba un identificador 'a' o una cadena 'v'");
+    }
+} 
+
+/* Reglas 79 a 81:  <opCad> -> l <expCad> | h <expCad> | ε */
+void opCad() {
+	char s = c;
+    /* 'l' = like, 'h' = & */
+	if (s == 'l' || s == 'h') {
+		expCad();
+	}
+}
+
+/* Regla 87: <Llama> -> [ a ( <listP> ) ] */
+void Llama() {
+    if (c == '[') {
+
+        if (c == 'a') {
+
+            if (c == '(') {
+
+                listP();   /* Lista de parámetros */
+
+                if (c == ')') {
+
+                    if (c == ']') {
+                    } else {
+                        errorSintactico("']' para cerrar la llamada");
+                    }
+                } else {
+                    errorSintactico("')' en la llamada a función");
+                }
+            } else {
+                errorSintactico("'(' en la llamada a función");
+            }
+        } else {
+            errorSintactico("un identificador 'a' en la llamada");
+        }
+    } else {
+        errorSintactico("'[' para iniciar una llamada a función");
+    }
+}
+
+/* Reglas 88 a la regla 90: <listP> -> ε | E <Param> | { <expCad> } <Param> */
+void listP() {
+    char s = c;
+
+    /* First(E) = { '(', 'a', 'n', '[' } */
+    if (s == '(' || s == 'a' || s == 'n' || s == '[') {
+        E();
+        Param();
+    }
+    /* First({ <expCad> }) = { '{' } */
+    else if (s == '{') {
+        expCad();
+
+        if (c == '}') {
+        } else {
+            errorSintactico("'}' en el parámetro de cadena");
+        }
+        Param();
+    }
+    /* Si no coincide con ninguno, aplicamos listP -> ξ (lista vacía) */
+}
+
+/* Reglas 91 a 92: <Param> -> , <listP> | ε */
+void Param() {
+    if (c == ',') {
+        listP();
+    }
+    /* Si no hay coma se aplica la regla Param -> ξ (fin de parámetros) */
+}
