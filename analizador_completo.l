@@ -1,5 +1,5 @@
 /***
-Proyecto 1. Analizador léxico
+Proyecto 2. Analizador sintáctico
 Compiladores Gpo 1
 Cano Roman Giselle
 Téllez Mendoza Eunice Abigail
@@ -14,9 +14,13 @@ atoi que convierte cadenas a entero y exit por si se necesita abortar).*/
 #include <string.h> 
 /*Se agrega para manipulación de cadenas (strcmp para comparar dos cadenas,
 strcpy que copia cadenas a nodos y strlen para longitud).*/
+
+
+/* Incluye todas las funciones necesarias del analizador sintactico */
 #include "parser.h"
+
 /* -------------------------------------------------------------------------- */
-/* Contadores */
+/* Contadores, Uso general */
 /* -------------------------------------------------------------------------- */
 int num_lineas = 1; //contador de lineas
 int num_col = 1; //contador de columnas
@@ -26,18 +30,6 @@ int num_col = 1; //contador de columnas
 /* -------------------------------------------------------------------------- */
 char lista_errores[100][255]; //hasta 100 errores de 255 caracteres
 int num_errores = 0;
-
-/* -------------------------------------------------------------------------- */
-/* Lista de atomos */
-/* -------------------------------------------------------------------------- */
-/*struct Atomo {        estructura en parser.h
-    char atomo; //simbolo atomizado
-    int num_linea; //numero de linea donde se encontro
-    int num_col; //numero de columna donde se encontro
-    struct Atomo *next; //puntero al siguiente
-};*/
-
-struct Atomo *head = NULL; //Lista vacia
 
 /* -------------------------------------------------------------------------- */
 /* Lista de tokens */
@@ -89,7 +81,7 @@ static const char cat_A_OpRel[] = {'e', 'd', '>', '<', 'm', 'w'};
 // Operadores de asignacion
 static const char cat_A_OpAsig[] = {'=', 'x', 'y', 'k', 'r', 'o'};
 // Operadores sobre cadenas
-static const char cat_A_OpCad[] = {'h','l'};
+static const char cat_A_OpCad[] = {'&','l'};
 
 /* -------------------------------------------------------------------------- */
 /* Arbol de búsqueda binaria, tabla de simbolos y literales */
@@ -141,9 +133,9 @@ void inOrdenLit(NodoLit *raiz, FILE *f);
 
 /* -------------------------------------------------------------------------- */
 /* Para los atomos */
-void insertAtom(struct Atomo **head, int class, int valor, char *str, int *num_linea, int *num_col);
-void freeList(struct Atomo *head);
-struct Atomo *reverseList(struct Atomo *head);
+void insertAtom(struct Atomo **atomoActual, int class, int valor, char *str, int *num_linea, int *num_col);
+void freeList(struct Atomo *atomoActual);
+struct Atomo *reverseList(struct Atomo *atomoActual);
 struct Atomo *createAtom(int class, int valor, char *str, int *num_linea, int *num_col);
 char atomizeValue(int class, int valor,char *str);
 
@@ -182,9 +174,9 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
 
-    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
 }
@@ -193,9 +185,9 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de token
-    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
 
-    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
 }
@@ -204,16 +196,16 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de token
-    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
 
-    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
 }
 {cte_ent} {              /* 3. Constantes enteras ---------------------------- */
     int class = 3; //clase del token
     int val_pos; //valor del token
-    char str[64]={0}; //cadena del token
+    char *str; //cadena del token
     int i; //para recorrer la cadena
     
     if (yytext[0] == '(') { //si tiene signos
@@ -236,7 +228,7 @@ op_cadena "&"|like
 
     insertToken(&lTokens, &numTokens, class, val_pos, yytext); //inserta el token en la lista de tokens
 
-    insertAtom(&head, class, val_pos, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, val_pos, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
 
@@ -246,9 +238,9 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
 
-    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
 }
@@ -266,18 +258,23 @@ op_cadena "&"|like
 
 	insertToken(&lTokens, &numTokens, class, pos, yytext); //inserta el token en la lista de tokens
 
-    insertAtom(&head, class, pos, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, pos, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
+}
+"_"([a-z]|[A-Z])([a-z]|[A-Z]|[0-9])* {   // Identificador abierto --------------
+    printf("Error: Caracter de termino de identificador _ no encontrado. Linea:%d, Columna:%d\n", num_lineas, num_col);
+    strcpy(lista_errores[num_errores], "Caracter de termino de identificador _ no encontrado");
+    num_errores++;
 }
 {simbolos}  {            /* 6. Simbolos epeciales --------------------------- */
     int class = 6; //clase del token
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
 
-    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
 }
@@ -286,9 +283,9 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
 
-    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
     
     num_col += yyleng; //cuenta caracteres para la columna
 }
@@ -298,19 +295,24 @@ op_cadena "&"|like
     int pos = numLit - 1;
 
 	insertToken(&lTokens, &numTokens, class, pos, yytext); //inserta el token en la lista de tokens  
-    int valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
+    int valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
 
-    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
+    insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
 }
+\"[^\"]*       {   /* Cadena abierta ----- */
+    printf("Error: Caracter de termino de cadena \" no encontrado. Linea:%d, Columna:%d\n", num_lineas, num_col);
+    strcpy(lista_errores[num_errores], "Caracter de termino de cadena \" no encontrado");
+    num_errores++;
+}
 {op_cadena}     {       /* 9. Operadores sobre cadena -------------------  */
     int class = 9; //clase del token
+    int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    int valorToken = lTokens[numTokens - 1][1]; //ve su valor
 
-    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col);    
+    
     num_col += yyleng; //cuenta caracteres para la columna
 }
 [ \t]+          /* Come espacios tabulares */
@@ -363,6 +365,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    // Del analizador lexico --------------------------------------------------------------------
+
     /* ---------- Impresiones ---------- */
     // Tabla de Simbolos
     printf("\n-------------- TABLA DE SIMBOLOS --------------\n");
@@ -410,15 +414,13 @@ int main(int argc, char **argv) {
         // Evitar que se ejecute el analizador sintactico
         free(lTokens);
         fclose(archivo);
-        freeList(head);
+        freeList(atomoActual);
         return -1;
     }
 
-    // Llamada al analizador sintactico
-
-
+    // Del Analizador sintactico -----------------------------------------------------------------
     // Impresion atomos
-    struct Atomo *reverse_head = reverseList(head); // Reversa de la lista de los atomos para mostrar en orden
+    struct Atomo *reverse_head = reverseList(atomoActual); // Reversa de la lista de los atomos para mostrar en orden
 
     printf("\n-------------- ATOMOS GENERADOS --------------\n");
     fprintf(archivo, "\n-------------- ATOMOS GENERADOS --------------\n");
@@ -432,11 +434,15 @@ int main(int argc, char **argv) {
         actual = actual->next;
     }
 
+    // Llamada al analizador -------
     iniciarAnalisisSintactico(reverse_head, archivo);
+
 
     // Libera memoria y cierra archivo
     free(lTokens);
+    freeList(atomoActual);
     freeList(reverse_head);
+    freeList(actual);
     fclose(archivo);
     
     return 0;
@@ -672,30 +678,30 @@ void inOrdenLit(NodoLit *raiz, FILE *f){
 /* Funciones Atomos  */
 /* -------------------------------------------------------------------------- */
 // Inserta al frente de la lista
-void insertAtom(struct Atomo **head, int class, int valor, char *str, int *num_linea, int *num_col){
+void insertAtom(struct Atomo **atomoActual, int class, int valor, char *str, int *num_linea, int *num_col){
     struct Atomo *newAtom = createAtom(class, valor, str, num_linea, num_col);   //crea el nuevo nodo/atomo
 
-    newAtom->next = *head; //apunta a la cabeza actual
+    newAtom->next = *atomoActual; //apunta a la cabeza actual
 
     // Actualiza la cabeza de la lista
-    *head = newAtom;
+    *atomoActual = newAtom;
 
-    //printf("Atomo insertado: %c, %d, %d, %p \n", (*head)->atomo, (*head)->num_linea, (*head)->num_col, (*head)->next);
+    //printf("Atomo insertado: %c, %d, %d, %p \n", (*atomoActual)->atomo, (*atomoActual)->num_linea, (*atomoActual)->num_col, (*atomoActual)->next);
     return;
 }
 
 // Libera el espacio de la lista
-void freeList(struct Atomo *head){
-    while (head != NULL){   // mientras no se haya llegado al final de la lista
-        struct Atomo *next = head->next; //guarda el siguiente nodo
-        free(head); //libera espacio
-        head = next;    //avanza al siguiente
+void freeList(struct Atomo *atomoActual){
+    while (atomoActual != NULL){   // mientras no se haya llegado al final de la lista
+        struct Atomo *next = atomoActual->next; //guarda el siguiente nodo
+        free(atomoActual); //libera espacio
+        atomoActual = next;    //avanza al siguiente
     }
 }
 
 // Invierte la lista para impresion
-struct Atomo *reverseList(struct Atomo *head){
-    struct Atomo *actual = head;
+struct Atomo *reverseList(struct Atomo *atomoActual){
+    struct Atomo *actual = atomoActual;
     struct Atomo *prev = NULL;
     struct Atomo *next;
 
@@ -771,3 +777,7 @@ char atomizeValue(int class, int valor,char *str){
 
     return c_valor;
 }
+
+
+
+
