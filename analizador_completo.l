@@ -14,7 +14,7 @@ atoi que convierte cadenas a entero y exit por si se necesita abortar).*/
 #include <string.h> 
 /*Se agrega para manipulación de cadenas (strcmp para comparar dos cadenas,
 strcpy que copia cadenas a nodos y strlen para longitud).*/
-
+#include "parser.h"
 /* -------------------------------------------------------------------------- */
 /* Contadores */
 /* -------------------------------------------------------------------------- */
@@ -30,12 +30,12 @@ int num_errores = 0;
 /* -------------------------------------------------------------------------- */
 /* Lista de atomos */
 /* -------------------------------------------------------------------------- */
-struct Atomo {
+/*struct Atomo {        estructura en parser.h
     char atomo; //simbolo atomizado
     int num_linea; //numero de linea donde se encontro
     int num_col; //numero de columna donde se encontro
     struct Atomo *next; //puntero al siguiente
-};
+};*/
 
 struct Atomo *head = NULL; //Lista vacia
 
@@ -89,7 +89,7 @@ static const char cat_A_OpRel[] = {'e', 'd', '>', '<', 'm', 'w'};
 // Operadores de asignacion
 static const char cat_A_OpAsig[] = {'=', 'x', 'y', 'k', 'r', 'o'};
 // Operadores sobre cadenas
-static const char cat_A_OpCad[] = {'&','l'};
+static const char cat_A_OpCad[] = {'h','l'};
 
 /* -------------------------------------------------------------------------- */
 /* Arbol de búsqueda binaria, tabla de simbolos y literales */
@@ -182,7 +182,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
 
     insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -193,7 +193,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de token
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
 
     insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -204,7 +204,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de token
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
 
     insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -213,7 +213,7 @@ op_cadena "&"|like
 {cte_ent} {              /* 3. Constantes enteras ---------------------------- */
     int class = 3; //clase del token
     int val_pos; //valor del token
-    char *str; //cadena del token
+    char str[64]={0}; //cadena del token
     int i; //para recorrer la cadena
     
     if (yytext[0] == '(') { //si tiene signos
@@ -246,7 +246,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
 
     insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -275,7 +275,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
 
     insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -286,7 +286,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
 
     insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
     
@@ -298,7 +298,7 @@ op_cadena "&"|like
     int pos = numLit - 1;
 
 	insertToken(&lTokens, &numTokens, class, pos, yytext); //inserta el token en la lista de tokens  
-    int valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    int valorToken = lTokens[numTokens-1][1]; //valor del ultimo token insertado
 
     insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -306,11 +306,11 @@ op_cadena "&"|like
 }
 {op_cadena}     {       /* 9. Operadores sobre cadena -------------------  */
     int class = 9; //clase del token
-    int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
+    int valorToken = lTokens[numTokens - 1][1]; //ve su valor
 
-    
+    insertAtom(&head, class, valorToken, yytext, &num_lineas, &num_col);    
     num_col += yyleng; //cuenta caracteres para la columna
 }
 [ \t]+          /* Come espacios tabulares */
@@ -432,12 +432,11 @@ int main(int argc, char **argv) {
         actual = actual->next;
     }
 
+    iniciarAnalisisSintactico(reverse_head, archivo);
 
     // Libera memoria y cierra archivo
     free(lTokens);
-    freeList(head);
     freeList(reverse_head);
-    freeList(actual);
     fclose(archivo);
     
     return 0;
