@@ -157,7 +157,7 @@ cte_ent 0|[1-9][0-9]*|"("("+"|"-")[1-9][0-9]*")"
 
 palRes assinado|caso|enquanto|fazer|flutuador|inteiro|para|quebrar|retorno|se|trocar
 
-identificador "_"([a-z]|[A-Z])([a-z]|[A-Z]|[0-9])*"_"
+identificador "_"([a-z]|[A-Z])([a-z]|[A-Z]|[0-9])*
 
 simbolos \(|\)|\{|\}|\;|\,|\[|\]|\:|#
 
@@ -174,7 +174,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens - 1][1]; //valor del ultimo token insertado
 
     insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -185,7 +185,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de token
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens - 1][1]; //valor del ultimo token insertado
 
     insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -196,7 +196,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de token
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens - 1][1]; //valor del ultimo token insertado
 
     insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -238,7 +238,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens - 1][1]; //valor del ultimo token insertado
 
     insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -262,17 +262,13 @@ op_cadena "&"|like
 
     num_col += yyleng; //cuenta caracteres para la columna
 }
-"_"([a-z]|[A-Z])([a-z]|[A-Z]|[0-9])* {   // Identificador abierto --------------
-    printf("Error: Caracter de termino de identificador _ no encontrado. Linea:%d, Columna:%d\n", num_lineas, num_col);
-    strcpy(lista_errores[num_errores], "Caracter de termino de identificador _ no encontrado");
-    num_errores++;
-}
+
 {simbolos}  {            /* 6. Simbolos epeciales --------------------------- */
     int class = 6; //clase del token
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens - 1][1]; //valor del ultimo token insertado
 
     insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
@@ -283,7 +279,7 @@ op_cadena "&"|like
     int valorToken = 0; //valor obtenido del token
 
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-    valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    valorToken = lTokens[numTokens - 1][1]; //valor del ultimo token insertado
 
     insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
     
@@ -295,27 +291,22 @@ op_cadena "&"|like
     int pos = numLit - 1;
 
 	insertToken(&lTokens, &numTokens, class, pos, yytext); //inserta el token en la lista de tokens  
-    int valorToken = lTokens[numTokens][1]; //valor del ultimo token insertado
+    int valorToken = lTokens[numTokens - 1][1]; //valor del ultimo token insertado
 
     insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //inserta el atomo en la lista de atomos
 
     num_col += yyleng; //cuenta caracteres para la columna
 }
-\"[^\"]*       {   /* Cadena abierta ----- */
-    printf("Error: Caracter de termino de cadena \" no encontrado. Linea:%d, Columna:%d\n", num_lineas, num_col);
-    strcpy(lista_errores[num_errores], "Caracter de termino de cadena \" no encontrado");
-    num_errores++;
-}
 {op_cadena}     {       /* 9. Operadores sobre cadena -------------------  */
     int class = 9; //clase del token
     int valorToken = 0; //valor obtenido del token
-
     insertToken(&lTokens, &numTokens, class, 0, yytext); //inserta el token en la lista de tokens
-
+    valorToken = lTokens[numTokens - 1][1]; //Linea agregada
+    insertAtom(&atomoActual, class, valorToken, yytext, &num_lineas, &num_col); //faltaba esta linea CORREGIDO
     
     num_col += yyleng; //cuenta caracteres para la columna
 }
-[ \t]+          /* Come espacios tabulares */
+[ \t\r]+          /* Come espacios tabulares y retornos de carro*/ //Cambiado
 [\n]            {        /* Saltos de linea    --------------------------- */
     num_lineas++;
     num_col = 1; // resetea las columnas
@@ -440,9 +431,8 @@ int main(int argc, char **argv) {
 
     // Libera memoria y cierra archivo
     free(lTokens);
-    freeList(atomoActual);
     freeList(reverse_head);
-    freeList(actual);
+    //Las funciones actual sobraban pues reverse_head apuntan a la misma lista
     fclose(archivo);
     
     return 0;
