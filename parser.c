@@ -509,6 +509,7 @@ void opArit() {
 	char s = c;
 	/* Listado de atomos para hacer comparaciones */
 	if (s == '=' || s == 'x' || s == 'y' || s == 'k' || s == 'r' || s == 'o'){
+	  avanzar(); //CORREGIDO Y AGREGADO
 		} else {
 			errorSintactico("operador de asignación");
 		}	
@@ -524,9 +525,11 @@ void E() {
 void EP() {
 	char s = c;
 	if (s == '+'){
+	        avanzar(); // AGREGADO
 		T();
 		EP(); /* Recursión para cadenas como "a + b + c " */
 	} else if (s == '-') {
+	        avanzar(); //AGREGADO
 		T();
 		EP();
 	}
@@ -544,14 +547,17 @@ void TP() {
 	char s = c;
 	
 	if(s == '*') {
+		avanzar(); //AGREGADO
 		F();
 		TP();
         return;
 	} else if (s == '/') {
+		avanzar(); //AGREGADO
 		F();
 		TP();
         return;
 	} else if(s == '%') {
+		avanzar(); //AGREGADO
 		F();
 		TP();
         return;
@@ -564,6 +570,7 @@ void F() {
 	char s = c;
     
     if (s == '(') {
+        consumir('('); //Como va en pareja se agrega el (
         /* Producción F -> ( E ) */
 		E();
         consumir(')');
@@ -590,6 +597,7 @@ void R(){
 void opRel(){
 	char s = c;
 	if (s == '>' || s == '<' || s == 'e' || s == 'd' || s == 'm' || s == 'w') {
+        avanzar(); //AGREGADO
         return;
     } else {
         errorSintactico("un operador relacional (>, <, ==, !=, >=, <=)");
@@ -601,6 +609,7 @@ void expLogica() {
     char s = c;
 
     if (s == '!') {
+        avanzar(); //AGREGADO
         /* Producción expLogica -> ! <expRel> */
         expRel();
     } else {
@@ -616,6 +625,7 @@ void expLog() {
     if (s == 'h' || s == 'j') {
         opLog();
         R();
+        expLog(); //SE AGREGA ESTA FUNCIÓN PARA HACERLO RECURSIVO
     }
     /* Si no cae en ninguno de los casos no se hace nada */
 }
@@ -624,6 +634,7 @@ void expLog() {
 void expRel() {
 	char s = c;
     if (s == '{') {
+        avanzar(); //AGREGADO
         /* Producción expRel -> { R } */
         R();
         consumir('}');
@@ -639,6 +650,7 @@ void opLog() {
     char s = c;
 
     if (s == 'h' || s == 'j') {
+        avanzar(); //AGREGADO
         return;
     } else {
         errorSintactico("un operador lógico (&& o ||)");
@@ -650,6 +662,7 @@ void expCad(){
 	char s = c;
 	 /* 'a' = identificador, 'v' = constante cadena */
     if (s == 'a' || s == 'v') {
+        avanzar(); //AGREGADO
         opCad();
     } else {
         errorSintactico("Se esperaba un identificador 'a' o una cadena 'v'");
@@ -661,65 +674,40 @@ void opCad() {
 	char s = c;
     /* 'l' = like, 'h' = & */
 	if (s == 'l' || s == 'h') {
+		avanzar(); //AGREGADO
 		expCad();
 	}
 }
 
 /* Regla 87: <Llama> -> [ a ( <listP> ) ] */
 void Llama() {
-    if (c == '[') {
-
-        if (c == 'a') {
-
-            if (c == '(') {
-
-                listP();   /* Lista de parámetros */
-
-                if (c == ')') {
-
-                    if (c == ']') {
-                    } else {
-                        errorSintactico("']' para cerrar la llamada");
-                    }
-                } else {
-                    errorSintactico("')' en la llamada a función");
-                }
-            } else {
-                errorSintactico("'(' en la llamada a función");
-            }
-        } else {
-            errorSintactico("un identificador 'a' en la llamada");
-        }
-    } else {
-        errorSintactico("'[' para iniciar una llamada a función");
-    }
+    consumir('[');
+    consumir('a');
+    consumir('(');
+    listP();   
+    consumir(')');
+    consumir(']');
+    //Regla debuggeada con DeepSeek
 }
 
 /* Reglas 88 a la regla 90: <listP> -> ε | E <Param> | { <expCad> } <Param> */
 void listP() {
-    char s = c;
-
-    /* First(E) = { '(', 'a', 'n', '[' } */
-    if (s == '(' || s == 'a' || s == 'n' || s == '[') {
+    if (c == '(' || c == 'a' || c == 'n' || c == '[') {
         E();
         Param();
     }
-    /* First({ <expCad> }) = { '{' } */
-    else if (s == '{') {
+    else if (c == '{') {
+        avanzar(); //AGREGADO
         expCad();
-
-        if (c == '}') {
-        } else {
-            errorSintactico("'}' en el parámetro de cadena");
-        }
+        consumir('}');
         Param();
     }
-    /* Si no coincide con ninguno, aplicamos listP -> ξ (lista vacía) */
 }
 
 /* Reglas 91 a 92: <Param> -> , <listP> | ε */
 void Param() {
     if (c == ',') {
+        avanzar(); //AGREGADO
         listP();
     }
     /* Si no hay coma se aplica la regla Param -> ξ (fin de parámetros) */
